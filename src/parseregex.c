@@ -83,7 +83,6 @@ bool expect(ParseStr_t* str, char ch) {
 
 bool match(ParseStr_t* str, char ch) {
     if (expect(str, ch)) {
-        printf("Matched '%c'\n", lookahead(str));
         advance(str);
         return true;
     }

@@ -27,6 +27,6 @@ typedef struct re_nfa_t_ {
 } re_nfa_t;
 
 re_nfa_t* build(re_ast_t* ast);
-
+re_nfa_t* re2nfa(char* pattern);
 
 #endif

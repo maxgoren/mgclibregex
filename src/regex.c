@@ -3,15 +3,13 @@
 #include <stdbool.h>
 #include "parseregex.h"
 #include "pattern_match.h"
-
+#include "nfa.h"
 
 bool match_text(char* pattern, char* text) {
     if (pattern == NULL || text == NULL) {
         return false;
     }
-    re_ast_t* ast = parse(pattern);
-    re_nfa_t* nfa = build(ast);
+    re_nfa_t* nfa = re2nfa(pattern);
     bool result = match_re(nfa, text);
-    free_ast(ast);
     return result;
 }

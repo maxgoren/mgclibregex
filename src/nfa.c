@@ -168,3 +168,8 @@ re_nfa_t* build(re_ast_t* ast) {
     return nfa;
 }
 
+re_nfa_t* re2nfa(char* pattern) {
+    re_ast_t* ast = parse(pattern);
+    re_nfa_t* nfa = build(ast);
+    return nfa;
+}
