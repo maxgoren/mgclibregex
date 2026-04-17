@@ -4,7 +4,6 @@
 #include <stdbool.h>
 #include "nfa.h"
 #include "parseregex.h"
-#include "state_set.h"
 
 #define MAX_NFA 0xFF
 

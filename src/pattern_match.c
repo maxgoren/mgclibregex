@@ -3,7 +3,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include "pattern_match.h"
-#include "state_set.h"
+#include "set.h"
 
 bool checkRange(char check, char low, char high) {
     return check >= low && check <= high;
@@ -22,18 +22,21 @@ bool match_ccl(char ch, re_nfa_transition_t* trans) {
     return false;
 }
 
-set_node* move(char ch, set_node* states) {
-    set_node* next = NULL;
-    for (set_node* it = states; it != NULL; it = it->next) {
+OrderedSet* move(char ch, OrderedSet* states) {
+    OrderedSet* next = malloc(sizeof(OrderedSet));
+    init_set(next, states->cmpfunc);
+    RBIterator it;
+    rb_iter_init(&it, states);
+    for (; !rb_iter_done(&it); rb_iter_next(&it)) {
         for (int i = 0; i < 2; i++) {
-            re_nfa_transition_t* trans = it->data->trans[i];
+            re_nfa_transition_t* trans = ((re_nfa_state_t*)rb_iter_get(&it)->value)->trans[i];
             if (trans != NULL && trans->is_epsilon == false) {
                 if (trans->is_ccl) {
                     if (match_ccl(ch, trans)) {
-                        next = set_add(next, trans->dest);
+                        setAdd(next, trans->dest);
                     }
                 } else if (trans->data[0] == ch || trans->data[0] == '.') {
-                    next = set_add(next, trans->dest);
+                    setAdd(next, trans->dest);
                 }
             }
         }
@@ -42,19 +45,21 @@ set_node* move(char ch, set_node* states) {
 }
 
 
-set_node* e_closure(set_node* states) {
-    set_node* next = states;
+OrderedSet* e_closure(OrderedSet* states) {
+    OrderedSet* next = states;
     re_nfa_state_t* ss[255];
     int st = 0;
-    for (set_node* it = states; it != NULL; it = it->next) {
-        ss[st++] = it->data;
+    RBIterator it;
+    rb_iter_init(&it, states);
+    for (; !rb_iter_done(&it); rb_iter_next(&it)) {
+        ss[st++] = ((re_nfa_state_t*)rb_iter_get(&it)->value);
     }
     while (st > 0) {
         re_nfa_state_t* curr = ss[--st];
         for (int i = 0; i < 2; i++) {
             re_nfa_transition_t* trans = curr->trans[i];
             if (trans != NULL && trans->is_epsilon) {
-                next = set_add(next, trans->dest);
+                setAdd(next, trans->dest);
                 ss[st++] = trans->dest;
             }
         }
@@ -62,9 +67,18 @@ set_node* e_closure(set_node* states) {
     return next;
 }
 
+int cmp_states(void* l, void* r) {
+    re_nfa_state_t* a = (re_nfa_state_t*)l;
+    re_nfa_state_t* b = (re_nfa_state_t*)r;
+    if (a->label < b->label) return -1;
+    if (a->label > b->label) return 1;
+    return 0;
+}
+
 bool match_re(re_nfa_t* nfa, char* text) {
-    set_node* states = NULL;
-    states = set_add(states, nfa->start);
+    OrderedSet *states = malloc(sizeof(OrderedSet));
+    init_set(states, &cmp_states);
+    setAdd(states, nfa->start);
     states = e_closure(states);
     bool did_find = false;
     int match_from = 0;
@@ -72,9 +86,9 @@ bool match_re(re_nfa_t* nfa, char* text) {
     for (int i = 0; text[i] != '\0'; i++) {
         states = move(text[i], states);
         states = e_closure(states);
-        if (states == NULL)
+        if (setEmpty(states))
             return false;
-        if (set_find(states, nfa->accept)) {
+        if (setContains(states, nfa->accept)) {
             did_find = true;
             match_len = i;
         }
